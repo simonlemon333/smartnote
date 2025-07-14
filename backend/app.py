@@ -1,26 +1,45 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import whisper
 import os
-from moviepy.editor import VideoFileClip
 import tempfile
-import openai
+import requests
 from dotenv import load_dotenv
+
+# Try to import moviepy, fallback if not available
+try:
+    from moviepy.editor import VideoFileClip
+    MOVIEPY_AVAILABLE = True
+except ImportError:
+    MOVIEPY_AVAILABLE = False
+    print("Warning: MoviePy not available, video processing will be limited")
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Load Whisper model
-model = whisper.load_model("base")
+# Try to load Whisper model, fallback to None if not available
+try:
+    import whisper
+    model = whisper.load_model("base")
+    WHISPER_AVAILABLE = True
+except ImportError:
+    model = None
+    WHISPER_AVAILABLE = False
+    print("Warning: Whisper not available, will use fallback transcription")
 
-# OpenAI API setup
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# DashScope API setup
+QWEN_API_KEY = os.getenv("QWEN_API_KEY")
+QWEN_API_URL = os.getenv("QWEN_API_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
 
 def extract_audio_from_video(video_path):
     """Extract audio from video file"""
     try:
+        if not MOVIEPY_AVAILABLE:
+            # Fallback: return placeholder audio path for testing
+            temp_audio = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+            return temp_audio.name
+        
         video = VideoFileClip(video_path)
         audio = video.audio
         
@@ -37,27 +56,41 @@ def extract_audio_from_video(video_path):
         return None
 
 def transcribe_audio(audio_path):
-    """Transcribe audio using Whisper"""
+    """Transcribe audio using Whisper (local) or fallback"""
     try:
-        result = model.transcribe(audio_path)
-        return result["text"]
+        if WHISPER_AVAILABLE and model:
+            result = model.transcribe(audio_path)
+            return result["text"]
+        else:
+            # Fallback: return placeholder text for testing
+            return "This is a placeholder transcription. Please install openai-whisper package for actual transcription functionality."
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         return None
 
 def summarize_text(text):
-    """Summarize text using OpenAI GPT"""
+    """Summarize text using DashScope API"""
     try:
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates structured notes from transcribed video content. Format your response as markdown with clear headings and bullet points. Use toggle-style formatting suitable for Notion."},
-                {"role": "user", "content": f"Please create structured notes from this video transcription, including key points, main topics, and a summary. Format it for easy copy-paste into Notion with toggle sections:\n\n{text}"}
+        headers = {
+            'Authorization': f'Bearer {QWEN_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        data = {
+            "model": "qwen-turbo",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant that creates structured notes from transcribed video content. Format your response as markdown with clear headings and bullet points. Use toggle-style formatting suitable for Notion with > symbols for collapsible sections."},
+                {"role": "user", "content": f"Please create structured notes from this video transcription, including key points, main topics, and a summary. Format it for easy copy-paste into Notion with toggle sections using > symbols:\n\n{text}"}
             ],
-            max_tokens=1500,
-            temperature=0.7
-        )
-        return response.choices[0].message.content
+            "max_tokens": 1500,
+            "temperature": 0.7
+        }
+        
+        response = requests.post(QWEN_API_URL, headers=headers, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        return result['choices'][0]['message']['content']
     except Exception as e:
         print(f"Error summarizing text: {e}")
         return None

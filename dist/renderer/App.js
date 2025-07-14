@@ -17,9 +17,29 @@ const App = () => {
         setIsProcessing(true);
         setProcessingStatus('Processing video...');
         try {
-            const result = await window.electronAPI.processVideo(file.name);
-            setProcessingStatus('Video processed successfully!');
-            setGeneratedNotes('# Sample Notes\n\n## Key Points\n\n- Video processing implemented\n- Ready for transcription\n- AI summarization pending');
+            // For drag-and-drop, we need to get the file path
+            let videoPath = '';
+            if (file.path) {
+                videoPath = file.path;
+            }
+            else {
+                // If no path available, use file dialog
+                const selectedPath = await window.electronAPI.selectVideoFile();
+                if (!selectedPath) {
+                    setProcessingStatus('No video selected');
+                    setIsProcessing(false);
+                    return;
+                }
+                videoPath = selectedPath;
+            }
+            const result = await window.electronAPI.processVideo(videoPath);
+            if (result.success) {
+                setProcessingStatus('Video processed successfully!');
+                setGeneratedNotes(result.summary || result.transcription || 'Processing completed');
+            }
+            else {
+                setProcessingStatus(`Error: ${result.error}`);
+            }
             setIsProcessing(false);
         }
         catch (error) {

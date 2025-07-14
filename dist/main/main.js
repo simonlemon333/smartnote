@@ -32,9 +32,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
+const form_data_1 = __importDefault(require("form-data"));
+const node_fetch_1 = __importDefault(require("node-fetch"));
 let mainWindow;
 const createWindow = () => {
     mainWindow = new electron_1.BrowserWindow({
@@ -66,6 +72,50 @@ electron_1.app.on('activate', () => {
     }
 });
 electron_1.ipcMain.handle('process-video', async (event, videoPath) => {
-    console.log('Processing video:', videoPath);
-    return { success: true, message: 'Video processing started' };
+    try {
+        console.log('Processing video:', videoPath);
+        // Create form data
+        const form = new form_data_1.default();
+        const videoStream = fs.createReadStream(videoPath);
+        form.append('video', videoStream);
+        // Send to Python backend
+        const response = await (0, node_fetch_1.default)('http://localhost:5000/process-video', {
+            method: 'POST',
+            body: form,
+            headers: form.getHeaders()
+        });
+        const result = await response.json();
+        if (response.ok) {
+            return {
+                success: true,
+                transcription: result.transcription,
+                summary: result.summary
+            };
+        }
+        else {
+            return {
+                success: false,
+                error: result.error
+            };
+        }
+    }
+    catch (error) {
+        console.error('Error processing video:', error);
+        return {
+            success: false,
+            error: 'Failed to process video'
+        };
+    }
+});
+electron_1.ipcMain.handle('select-video-file', async () => {
+    const result = await electron_1.dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [
+            { name: 'Video Files', extensions: ['mp4', 'mkv', 'avi', 'mov'] }
+        ]
+    });
+    if (!result.canceled && result.filePaths.length > 0) {
+        return result.filePaths[0];
+    }
+    return null;
 });

@@ -55,7 +55,7 @@ ipcMain.handle('process-video', async (event, videoPath: string) => {
       headers: form.getHeaders()
     });
     
-    const result = await response.json();
+    const result = await response.json() as any;
     
     if (response.ok) {
       return {
