@@ -1,0 +1,72 @@
+.video-drop-zone {
+  width: 100%;
+  padding: 20px;
+}
+
+.drop-area {
+  border: 3px dashed #ccc;
+  border-radius: 20px;
+  padding: 60px 20px;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.drop-area:hover,
+.drop-area.drag-over {
+  border-color: #667eea;
+  background-color: rgba(102, 126, 234, 0.1);
+  transform: scale(1.02);
+}
+
+.drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.drop-icon {
+  font-size: 4rem;
+  margin-bottom: 10px;
+}
+
+.drop-content h3 {
+  color: #333;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.drop-content p {
+  color: #666;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.or-divider {
+  color: #999;
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #667eea;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.file-input-label:hover {
+  background-color: #5a6fd8;
+}

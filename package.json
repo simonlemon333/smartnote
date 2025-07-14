@@ -1,0 +1,30 @@
+{
+  "name": "smartnote",
+  "version": "1.0.0",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc && webpack --mode=production",
+    "dev": "concurrently \"tsc --watch\" \"webpack serve --mode=development\" \"wait-on http://localhost:9000 && electron dist/main/main.js\"",
+    "electron": "electron dist/main/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.3",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.2",
+    "webpack": "^5.100.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  },
+  "dependencies": {
+    "@types/node-fetch": "^2.6.12",
+    "form-data": "^4.0.3",
+    "node-fetch": "^3.3.2"
+  }
+}
