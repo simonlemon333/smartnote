@@ -74,3 +74,6 @@ __pycache__/
 
 # Claude local settings
 .claude/settings.local.json
+
+# Node.js internal files
+node_modules/.package-lock.json
