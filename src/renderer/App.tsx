@@ -1,24 +1,60 @@
 import React, { useState } from 'react';
-// import VideoDropZone from './components/VideoDropZone';
-// import ProcessingStatus from './components/ProcessingStatus';
-// import NotesOutput from './components/NotesOutput';
+import VideoDropZone from './components/VideoDropZone';
+import ProcessingStatus from './components/ProcessingStatus';
+import NotesOutput from './components/NotesOutput';
 import './App.css';
 
 const App: React.FC = () => {
-  console.log('App component rendering...');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processedNotes, setProcessedNotes] = useState('');
+  const [transcription, setTranscription] = useState('');
+  const [processingStatus, setProcessingStatus] = useState('');
+
+  const handleVideoProcess = async (videoFile: File) => {
+    setIsProcessing(true);
+    setProcessingStatus('Uploading video...');
+    
+    try {
+      const formData = new FormData();
+      formData.append('video', videoFile);
+      
+      setProcessingStatus('Processing video (this may take a few minutes)...');
+      
+      const response = await fetch('http://localhost:5000/process-video', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      setProcessedNotes(result.formatted_notes);
+      setTranscription(result.transcription);
+      setProcessingStatus('Complete!');
+    } catch (error) {
+      console.error('Error processing video:', error);
+      setProcessingStatus('Error processing video. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
-    <div className="app" style={{minHeight: '100vh', padding: '20px', background: '#f0f0f0'}}>
+    <div className="app">
       <header className="app-header">
-        <h1 style={{color: '#333'}}>Smart Note - TEST</h1>
-        <p style={{color: '#666'}}>Transform your videos into structured notes</p>
+        <h1>Smart Note</h1>
+        <p>Transform your videos into structured notes</p>
       </header>
       
       <main className="app-main">
-        <div style={{background: 'white', padding: '20px', borderRadius: '8px', margin: '20px 0'}}>
-          <h2>Frontend is working!</h2>
-          <p>If you can see this, React is rendering correctly.</p>
-        </div>
+        <VideoDropZone onFileUpload={handleVideoProcess} disabled={isProcessing} />
+        <ProcessingStatus 
+          isProcessing={isProcessing} 
+          status={processingStatus} 
+        />
+        <NotesOutput notes={processedNotes} transcription={transcription} />
       </main>
     </div>
   );

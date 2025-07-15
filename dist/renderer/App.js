@@ -11,42 +11,36 @@ const NotesOutput_1 = __importDefault(require("./components/NotesOutput"));
 require("./App.css");
 const App = () => {
     const [isProcessing, setIsProcessing] = (0, react_1.useState)(false);
-    const [generatedNotes, setGeneratedNotes] = (0, react_1.useState)('');
+    const [processedNotes, setProcessedNotes] = (0, react_1.useState)('');
+    const [transcription, setTranscription] = (0, react_1.useState)('');
     const [processingStatus, setProcessingStatus] = (0, react_1.useState)('');
-    const handleVideoUpload = async (file) => {
+    const handleVideoProcess = async (videoFile) => {
         setIsProcessing(true);
-        setProcessingStatus('Processing video...');
+        setProcessingStatus('Uploading video...');
         try {
-            // For drag-and-drop, we need to get the file path
-            let videoPath = '';
-            if (file.path) {
-                videoPath = file.path;
+            const formData = new FormData();
+            formData.append('video', videoFile);
+            setProcessingStatus('Processing video (this may take a few minutes)...');
+            const response = await fetch('http://localhost:5000/process-video', {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            else {
-                // If no path available, use file dialog
-                const selectedPath = await window.electronAPI.selectVideoFile();
-                if (!selectedPath) {
-                    setProcessingStatus('No video selected');
-                    setIsProcessing(false);
-                    return;
-                }
-                videoPath = selectedPath;
-            }
-            const result = await window.electronAPI.processVideo(videoPath);
-            if (result.success) {
-                setProcessingStatus('Video processed successfully!');
-                setGeneratedNotes(result.summary || result.transcription || 'Processing completed');
-            }
-            else {
-                setProcessingStatus(`Error: ${result.error}`);
-            }
-            setIsProcessing(false);
+            const result = await response.json();
+            setProcessedNotes(result.formatted_notes);
+            setTranscription(result.transcription);
+            setProcessingStatus('Complete!');
         }
         catch (error) {
-            setProcessingStatus('Error processing video');
+            console.error('Error processing video:', error);
+            setProcessingStatus('Error processing video. Please try again.');
+        }
+        finally {
             setIsProcessing(false);
         }
     };
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "app", children: [(0, jsx_runtime_1.jsxs)("header", { className: "app-header", children: [(0, jsx_runtime_1.jsx)("h1", { children: "Smart Note" }), (0, jsx_runtime_1.jsx)("p", { children: "Transform your videos into structured notes" })] }), (0, jsx_runtime_1.jsxs)("main", { className: "app-main", children: [(0, jsx_runtime_1.jsx)(VideoDropZone_1.default, { onFileUpload: handleVideoUpload }), (0, jsx_runtime_1.jsx)(ProcessingStatus_1.default, { isProcessing: isProcessing, status: processingStatus }), (0, jsx_runtime_1.jsx)(NotesOutput_1.default, { notes: generatedNotes })] })] }));
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "app", children: [(0, jsx_runtime_1.jsxs)("header", { className: "app-header", children: [(0, jsx_runtime_1.jsx)("h1", { children: "Smart Note" }), (0, jsx_runtime_1.jsx)("p", { children: "Transform your videos into structured notes" })] }), (0, jsx_runtime_1.jsxs)("main", { className: "app-main", children: [(0, jsx_runtime_1.jsx)(VideoDropZone_1.default, { onFileUpload: handleVideoProcess, disabled: isProcessing }), (0, jsx_runtime_1.jsx)(ProcessingStatus_1.default, { isProcessing: isProcessing, status: processingStatus }), (0, jsx_runtime_1.jsx)(NotesOutput_1.default, { notes: processedNotes, transcription: transcription })] })] }));
 };
 exports.default = App;

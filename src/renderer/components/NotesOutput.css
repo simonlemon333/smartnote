@@ -22,9 +22,14 @@
   font-weight: 600;
 }
 
-.copy-button {
+.button-group {
+  display: flex;
+  gap: 12px;
+}
+
+.copy-button,
+.download-button {
   padding: 8px 16px;
-  background-color: #667eea;
   color: white;
   border: none;
   border-radius: 6px;
@@ -34,8 +39,20 @@
   transition: background-color 0.3s ease;
 }
 
+.copy-button {
+  background-color: #667eea;
+}
+
 .copy-button:hover {
   background-color: #5a6fd8;
+}
+
+.download-button {
+  background-color: #28a745;
+}
+
+.download-button:hover {
+  background-color: #218838;
 }
 
 .notes-content {
