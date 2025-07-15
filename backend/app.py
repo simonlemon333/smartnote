@@ -63,22 +63,42 @@ def transcribe_audio(audio_path):
     try:
         print("[PROGRESS] Starting audio transcription with Whisper...")
         if WHISPER_AVAILABLE and model:
-            segments, info = model.transcribe(audio_path, language=None)  # Auto-detect language
+            segments, info = model.transcribe(audio_path, language=None, word_timestamps=True)  # Enable word timestamps
             print(f"[PROGRESS] Detected language: {info.language} (probability: {info.language_probability:.2f})")
-            print("[PROGRESS] Processing transcription segments...")
+            print("[PROGRESS] Processing transcription segments with timestamps...")
+            
+            # Collect segments with timestamps
+            timestamped_segments = []
+            transcription_parts = []
+            
+            for segment in segments:
+                # Convert timestamps to readable format
+                start_time = f"{int(segment.start // 60):02d}:{int(segment.start % 60):02d}"
+                end_time = f"{int(segment.end // 60):02d}:{int(segment.end % 60):02d}"
+                
+                # Store segment with timestamp info
+                timestamped_segments.append({
+                    'text': segment.text.strip(),
+                    'start': segment.start,
+                    'end': segment.end,
+                    'start_formatted': start_time,
+                    'end_formatted': end_time
+                })
+                transcription_parts.append(segment.text)
+            
             # Combine all segments into full text
-            transcription = " ".join([segment.text for segment in segments])
+            transcription = " ".join(transcription_parts)
             print(f"[PROGRESS] Transcription completed! Total length: {len(transcription)} characters")
-            return transcription, info.language  # Return both transcription and detected language
+            return transcription, info.language, timestamped_segments  # Return transcription, language, and segments with timestamps
         else:
             # Fallback: return placeholder text for testing
-            return "This is a placeholder transcription. Please install faster-whisper package for actual transcription functionality.", "en"
+            return "This is a placeholder transcription. Please install faster-whisper package for actual transcription functionality.", "en", []
     except Exception as e:
         print(f"[ERROR] Error transcribing audio: {e}")
-        return None, None
+        return None, None, []
 
-def summarize_text(text, language='en'):
-    """Summarize text using DashScope API"""
+def summarize_text(text, language='en', timestamped_segments=None):
+    """Summarize text using DashScope API with optional timestamps"""
     try:
         print("[PROGRESS] Starting AI summarization...")
         headers = {
@@ -101,38 +121,67 @@ def summarize_text(text, language='en'):
         
         # Better prompt for long videos with proper Notion toggle format
         system_prompt = f"""You are an expert note-taker that creates comprehensive structured notes from video transcriptions. 
-        
+
 IMPORTANT: {lang_instruction} Use the SAME language as the transcription content.
+
+Format this content for Notion using proper toggle and indentation syntax:
+
+Requirements:
+- Use ▶ symbol for main toggleable sections
+- Use ▶### for toggleable subsection headers  
+- Use TAB characters (not spaces) for indentation
+- Each child level should be indented one TAB deeper than its parent
+- Use - for list items
+- Add timestamps in format [时间: MM:SS] to important points
+- Remove all HTML tags and escape characters
+- Ensure consistent spacing and line breaks
+
+Target structure:
+## Main Title
+
+▶ Major Section 1
+\t▶### Subsection 1.1
+\t\t- Content point 1 [时间: MM:SS]
+\t\t- Content point 2 [时间: MM:SS]
+\t\t\t- Sub-point A
+\t\t\t- Sub-point B
+
+▶ Major Section 2
+\t▶### Subsection 2.1
+\t\t- Content point 3 [时间: MM:SS]
+\t\t- Content point 4 [时间: MM:SS]
+
+Rules:
+- Every child element must be indented with TAB characters
+- Maintain logical hierarchy (subsections under sections, points under subsections)
+- Keep original content meaning unchanged
+- Clean up formatting issues but preserve all information"""
         
-For Notion toggle format, use this exact syntax:
-        - Main headings: ## Title
-        - Toggle sections: ### > Section Title
-        - Sub-toggles: #### > Sub-section Title
-        - Bullet points: - Point content
-        - Important items: **Bold text**
+        # Create timestamp reference text if available
+        timestamp_info = ""
+        if timestamped_segments:
+            timestamp_info = "\n\nTimestamp segments available for reference:\n"
+            for i, segment in enumerate(timestamped_segments[:10]):  # Show first 10 segments as examples
+                timestamp_info += f"[{segment['start_formatted']}] {segment['text'][:100]}...\n"
         
-Create detailed, well-organized notes that capture all key information from long videos."""
-        
-        user_prompt = f"""Create comprehensive structured notes from this video transcription. This is a long video, so please:
-        
-        1. Create detailed sections with multiple toggle levels
-        2. Include specific examples and details mentioned
-        3. Use proper Notion toggle format with > symbols
-        4. Organize into logical themes and topics
-        5. Include a comprehensive summary at the end
-        6. IMPORTANT: Write the notes in the SAME language as the transcription content
-        
-        Format requirements:
-        - Use ## for main headings
-        - Use ### > for toggle sections 
-        - Use #### > for sub-toggle sections
-        - Use - for bullet points
-        - Use **bold** for important terms
-        
-        Detected language: {language}
-        
-        Transcription:
-        {text}"""
+        user_prompt = f"""Create comprehensive structured notes from this video transcription using the exact format specified above.
+
+IMPORTANT INSTRUCTIONS:
+1. Use the SAME language as the transcription content
+2. Create detailed sections with multiple toggle levels using ▶ symbols
+3. Use TAB characters for proper indentation hierarchy
+4. Include specific examples and details mentioned
+5. Add time references [时间: MM:SS] for important points when available
+6. Organize into logical themes and topics
+7. Include a comprehensive summary at the end
+8. Remove any HTML tags or escape characters
+9. Ensure clean, consistent formatting
+
+Detected language: {language}
+{timestamp_info}
+
+Content to format:
+{text}"""
         
         data = {
             "model": "qwen-turbo",
@@ -183,11 +232,12 @@ def process_video():
         if not transcription_result or not transcription_result[0]:
             return jsonify({"error": "Failed to transcribe audio"}), 500
         
-        transcription, detected_language = transcription_result
+        transcription, detected_language, timestamped_segments = transcription_result
         print(f"[PROGRESS] Using detected language: {detected_language} for summarization")
+        print(f"[PROGRESS] Extracted {len(timestamped_segments)} timestamped segments")
         
-        # Summarize content with detected language
-        summary = summarize_text(transcription, detected_language)
+        # Summarize content with detected language and timestamps
+        summary = summarize_text(transcription, detected_language, timestamped_segments)
         if not summary:
             return jsonify({"error": "Failed to summarize content"}), 500
         
@@ -200,6 +250,7 @@ def process_video():
             "transcription": transcription,
             "summary": summary,
             "formatted_notes": summary,
+            "timestamped_segments": timestamped_segments,
             "status": "success"
         })
         

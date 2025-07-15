@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_runtime_1 = require("react/jsx-runtime");
 require("./NotesOutput.css");
-const NotesOutput = ({ notes, transcription }) => {
+const NotesOutput = ({ notes, transcription, timestamped_segments }) => {
     if (!notes)
         return null;
     const copyToClipboard = () => {
@@ -11,7 +11,14 @@ const NotesOutput = ({ notes, transcription }) => {
     const downloadTranscript = () => {
         if (!transcription)
             return;
-        const blob = new Blob([transcription], { type: 'text/plain' });
+        // Create timestamped transcript if segments are available
+        let transcriptContent = transcription;
+        if (timestamped_segments && timestamped_segments.length > 0) {
+            transcriptContent = timestamped_segments
+                .map(segment => `[${segment.start_formatted}] ${segment.text}`)
+                .join('\n\n');
+        }
+        const blob = new Blob([transcriptContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;

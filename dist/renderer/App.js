@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const VideoDropZone_1 = __importDefault(require("./components/VideoDropZone"));
+const TranscriptInput_1 = __importDefault(require("./components/TranscriptInput"));
 const ProcessingStatus_1 = __importDefault(require("./components/ProcessingStatus"));
 const NotesOutput_1 = __importDefault(require("./components/NotesOutput"));
 require("./App.css");
@@ -13,6 +14,7 @@ const App = () => {
     const [isProcessing, setIsProcessing] = (0, react_1.useState)(false);
     const [processedNotes, setProcessedNotes] = (0, react_1.useState)('');
     const [transcription, setTranscription] = (0, react_1.useState)('');
+    const [timestampedSegments, setTimestampedSegments] = (0, react_1.useState)([]);
     const [processingStatus, setProcessingStatus] = (0, react_1.useState)('');
     const handleVideoProcess = async (videoFile) => {
         setIsProcessing(true);
@@ -31,6 +33,7 @@ const App = () => {
             const result = await response.json();
             setProcessedNotes(result.formatted_notes);
             setTranscription(result.transcription);
+            setTimestampedSegments(result.timestamped_segments || []);
             setProcessingStatus('Complete!');
         }
         catch (error) {
@@ -41,6 +44,34 @@ const App = () => {
             setIsProcessing(false);
         }
     };
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "app", children: [(0, jsx_runtime_1.jsxs)("header", { className: "app-header", children: [(0, jsx_runtime_1.jsx)("h1", { children: "Smart Note" }), (0, jsx_runtime_1.jsx)("p", { children: "Transform your videos into structured notes" })] }), (0, jsx_runtime_1.jsxs)("main", { className: "app-main", children: [(0, jsx_runtime_1.jsx)(VideoDropZone_1.default, { onFileUpload: handleVideoProcess, disabled: isProcessing }), (0, jsx_runtime_1.jsx)(ProcessingStatus_1.default, { isProcessing: isProcessing, status: processingStatus }), (0, jsx_runtime_1.jsx)(NotesOutput_1.default, { notes: processedNotes, transcription: transcription })] })] }));
+    const handleTranscriptProcess = async (transcript) => {
+        setIsProcessing(true);
+        setProcessingStatus('Processing transcript...');
+        try {
+            const response = await fetch('http://localhost:5000/process-transcript', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ transcript }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            setProcessedNotes(result.formatted_notes);
+            setTranscription(result.transcription);
+            setTimestampedSegments([]); // No timestamps for direct transcript
+            setProcessingStatus('Complete!');
+        }
+        catch (error) {
+            console.error('Error processing transcript:', error);
+            setProcessingStatus('Error processing transcript. Please try again.');
+        }
+        finally {
+            setIsProcessing(false);
+        }
+    };
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "app", children: [(0, jsx_runtime_1.jsxs)("header", { className: "app-header", children: [(0, jsx_runtime_1.jsx)("h1", { children: "Smart Note" }), (0, jsx_runtime_1.jsx)("p", { children: "Transform your videos into structured notes" })] }), (0, jsx_runtime_1.jsxs)("main", { className: "app-main", children: [(0, jsx_runtime_1.jsx)(VideoDropZone_1.default, { onFileUpload: handleVideoProcess, disabled: isProcessing }), (0, jsx_runtime_1.jsx)(TranscriptInput_1.default, { onTranscriptSubmit: handleTranscriptProcess, disabled: isProcessing }), (0, jsx_runtime_1.jsx)(ProcessingStatus_1.default, { isProcessing: isProcessing, status: processingStatus }), (0, jsx_runtime_1.jsx)(NotesOutput_1.default, { notes: processedNotes, transcription: transcription, timestamped_segments: timestampedSegments })] })] }));
 };
 exports.default = App;
