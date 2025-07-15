@@ -53,7 +53,7 @@ const createWindow = () => {
         },
     });
     if (process.env.NODE_ENV === 'development') {
-        mainWindow.loadURL('http://localhost:9000');
+        mainWindow.loadURL('http://localhost:9001');
         mainWindow.webContents.openDevTools();
     }
     else {

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React Test</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        console.log('Test page loaded');
+        
+        // Fetch and execute the bundle
+        fetch('http://localhost:9001/bundle.js')
+            .then(response => response.text())
+            .then(code => {
+                console.log('Bundle fetched, size:', code.length);
+                
+                // Create script element
+                const script = document.createElement('script');
+                script.innerHTML = code;
+                document.head.appendChild(script);
+                
+                console.log('Bundle executed');
+                
+                setTimeout(() => {
+                    const root = document.getElementById('root');
+                    console.log('Root content after 2s:', root.innerHTML);
+                }, 2000);
+            })
+            .catch(err => console.error('Error:', err));
+    </script>
+</body>
+</html>
